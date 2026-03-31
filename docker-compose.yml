@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  task:
+    build: .
+    container_name: task
+    restart: unless-stopped
+
+    depends_on:
+      - db
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      TZ: Asia/Tashkent
+      PYTHONUNBUFFERED: 1
+      DB_HOST: db
+      DB_NAME: task_db
+      DB_USER: task_user
+      DB_PASSWORD: task_pass
+      DB_PORT: 5432
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./temp:/app/temp
+      - ./logs:/app/logs
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  db:
+    image: postgres:15
+    container_name: task_postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: task_db
+      POSTGRES_USER: task_user
+      POSTGRES_PASSWORD: task_pass
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    ports:
+      - "5435:5432"
+
+volumes:
+  postgres_data:
