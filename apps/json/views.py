@@ -3,6 +3,7 @@ from django.db.models.functions import RowNumber, ExtractYear
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from apps.json.models import RepositoryLanguage
+from .serializers import YearTopLanguagesSerializer
 
 
 class TopLanguagesByYearView(APIView):
@@ -27,10 +28,10 @@ class TopLanguagesByYearView(APIView):
         for item in queryset:
             year = item['year']
             if year not in data:
-                data[year] = []
-            data[year].append({
-                'language': item['language__name'],
-                'size': item['total_size']
-            })
+                data[year] = {'year': year, 'languages': []}
+            data[year]['languages'].append(item)
 
-        return Response(data)
+        data_by_year = list(data.values())
+        serializer = YearTopLanguagesSerializer(data_by_year, many=True)
+
+        return Response(serializer.data)
