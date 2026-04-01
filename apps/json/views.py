@@ -1,28 +1,28 @@
 from collections import defaultdict
+from django.db.models import Sum
+from django.db.models.functions import ExtractYear
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from apps.json.models import RepositoryLanguage
 
 
 class TopLanguagesByYearView(APIView):
-
     def get(self, request):
-        data = defaultdict(lambda: defaultdict(int))
+        queryset = (
+            RepositoryLanguage.objects
+            .annotate(year=ExtractYear('repo__created_at'))
+            .values('year', 'language__name')
+            .annotate(total_size=Sum('size'))
+            .order_by('-year', '-total_size')
+        )
 
-        queryset = RepositoryLanguage.objects.select_related('repo', 'language')
+        data = defaultdict(list)
+        for item in queryset:
+            year = item['year']
+            if len(data[year]) < 5:
+                data[year].append({
+                    'language': item['language__name'],
+                    'size': item['total_size']
+                })
 
-        for rl in queryset:
-            year = rl.repo.created_at.year
-            lang = rl.language.name
-            data[year][lang] += 1
-
-        result = {}
-
-        for year in sorted(data.keys(), reverse=True):
-            langs = data[year]
-            sorted_langs = sorted(langs.items(), key=lambda x: x[1], reverse=True)[:5]
-            result[year] = [
-                {"language": lang, "count": count}
-                for lang, count in sorted_langs
-            ]
-        return Response(result)
+        return Response(data)
